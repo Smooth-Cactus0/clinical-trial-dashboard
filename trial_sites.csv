@@ -1,0 +1,7 @@
+site_id,site_name,city,state,principal_investigator,activation_date
+SITE001,Mass General Hospital,Boston,MA,Dr. Sarah Chen,2022-01-15
+SITE002,Mayo Clinic,Rochester,MN,Dr. Michael Roberts,2022-01-20
+SITE003,Johns Hopkins,Baltimore,MD,Dr. Emily Johnson,2022-02-01
+SITE004,UCSF Medical Center,San Francisco,CA,Dr. James Park,2022-02-15
+SITE005,Cleveland Clinic,Cleveland,OH,Dr. Lisa Anderson,2022-03-01
+SITE006,Stanford Medicine,Palo Alto,CA,Dr. David Kim,2022-03-15
