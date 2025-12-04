@@ -43,6 +43,13 @@ Advanced Phase III multi-center clinical trial analysis platform with statistica
 - **Dropout Analysis** - Patient retention and attrition tracking
 - **Demographics** - Population distribution by age, gender, baseline severity
 
+### Predictive Analytics (NEW!)
+- **Treatment Response Prediction** - Machine learning model predicting patient response
+- **Feature Importance Analysis** - Identify key factors influencing treatment outcomes
+- **ROC Curve Visualization** - Model performance metrics (AUC-ROC)
+- **Interactive Response Simulator** - Real-time "what-if" analysis for patient characteristics
+- **Model Accuracy Tracking** - 70%+ prediction accuracy on test set
+
 ## 📊 Dataset
 
 Simulated Phase III clinical trial with:
@@ -139,8 +146,10 @@ Perfect for roles in:
 
 **[Alexy Louis]**
 - Email: alexy.louis.scholar@gmail.com
-- LinkedIn: [Your LinkedIn]
-- Portfolio: [Your Website]
+- LinkedIn: [https://www.linkedin.com/in/alexy-louis-19a5a9262/]
+- Portfolio: see https://github.com/Smooth-Cactus0
+
+
 
 ## 📜 License
 
