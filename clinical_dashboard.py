@@ -6,6 +6,10 @@ from plotly.subplots import make_subplots
 import numpy as np
 from scipy import stats
 from datetime import datetime
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, roc_auc_score, roc_curve
 
 # Page configuration
 st.set_page_config(
@@ -80,6 +84,9 @@ st.markdown("""
         <div class="header-subtitle">Phase III Multi-Center Efficacy and Safety Analysis</div>
         <div style="margin-top: 15px; opacity: 0.8;">
             Protocol: CT-2022-001 | Indication: Chronic Disease Management
+        </div>
+        <div class="header-footer">
+            Built by [Alexy Louis] | Data Analyst & Developer | alexy.louis.scholar@gmail.com | Available for Dashboards and Analytics Projects
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -562,6 +569,168 @@ fig_alt.update_layout(
 )
 
 st.plotly_chart(fig_alt, use_container_width=True)
+
+st.markdown("---")
+
+# ========== PREDICTIVE ANALYTICS - TREATMENT RESPONSE ==========
+st.subheader("Predictive Analytics: Treatment Response Model")
+st.markdown("Machine learning model to predict patient response based on baseline characteristics")
+
+# Prepare data for modeling
+model_data = patients_filtered.copy()
+
+# Get final response for each patient
+final_response = efficacy_filtered.sort_values('visit_week').groupby('patient_id').tail(1)
+final_response = final_response[['patient_id', 'response_category']]
+
+# Binary classification: Responder (Complete/Partial) vs Non-Responder (Stable/Progressive)
+final_response['is_responder'] = final_response['response_category'].isin(['Complete Response', 'Partial Response']).astype(int)
+
+model_data = model_data.merge(final_response[['patient_id', 'is_responder']], on='patient_id', how='left')
+model_data = model_data.dropna(subset=['is_responder'])
+
+# Encode categorical features
+le_gender = LabelEncoder()
+le_ethnicity = LabelEncoder()
+le_severity = LabelEncoder()
+le_treatment = LabelEncoder()
+
+model_data['gender_encoded'] = le_gender.fit_transform(model_data['gender'])
+model_data['ethnicity_encoded'] = le_ethnicity.fit_transform(model_data['ethnicity'])
+model_data['severity_encoded'] = le_severity.fit_transform(model_data['baseline_severity'])
+model_data['treatment_encoded'] = le_treatment.fit_transform(model_data['treatment_arm'])
+
+# Features for modeling
+features = ['age', 'gender_encoded', 'ethnicity_encoded', 'bmi', 'severity_encoded', 'treatment_encoded']
+X = model_data[features]
+y = model_data['is_responder']
+
+# Train model
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+model = LogisticRegression(random_state=42, max_iter=1000)
+model.fit(X_train, y_train)
+
+# Predictions
+y_pred = model.predict(X_test)
+y_pred_proba = model.predict_proba(X_test)[:, 1]
+
+# Model performance
+accuracy = accuracy_score(y_test, y_pred)
+auc = roc_auc_score(y_test, y_pred_proba)
+
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    st.metric("Model Accuracy", f"{accuracy*100:.1f}%",
+              delta="On test set")
+
+with col2:
+    st.metric("AUC-ROC Score", f"{auc:.3f}",
+              delta="Discrimination ability")
+
+with col3:
+    response_rate = model_data['is_responder'].mean()
+    st.metric("Overall Response Rate", f"{response_rate*100:.1f}%",
+              delta=f"{model_data['is_responder'].sum()} responders")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.markdown("**Feature Importance**")
+    
+    feature_names = ['Age', 'Gender', 'Ethnicity', 'BMI', 'Baseline Severity', 'Treatment Dose']
+    importance = np.abs(model.coef_[0])
+    
+    feat_importance = pd.DataFrame({
+        'Feature': feature_names,
+        'Importance': importance
+    }).sort_values('Importance', ascending=True)
+    
+    fig_importance = px.bar(
+        feat_importance,
+        x='Importance',
+        y='Feature',
+        orientation='h',
+        title='Feature Importance for Response Prediction',
+        color='Importance',
+        color_continuous_scale='Teal'
+    )
+    
+    fig_importance.update_layout(showlegend=False, height=350)
+    st.plotly_chart(fig_importance, use_container_width=True)
+
+with col2:
+    st.markdown("**ROC Curve**")
+    
+    fpr, tpr, thresholds = roc_curve(y_test, y_pred_proba)
+    
+    fig_roc = go.Figure()
+    
+    fig_roc.add_trace(go.Scatter(
+        x=fpr,
+        y=tpr,
+        mode='lines',
+        name=f'Model (AUC = {auc:.3f})',
+        line=dict(color='#5dae8b', width=3)
+    ))
+    
+    fig_roc.add_trace(go.Scatter(
+        x=[0, 1],
+        y=[0, 1],
+        mode='lines',
+        name='Random Classifier',
+        line=dict(color='gray', width=2, dash='dash')
+    ))
+    
+    fig_roc.update_layout(
+        title='ROC Curve - Model Performance',
+        xaxis_title='False Positive Rate',
+        yaxis_title='True Positive Rate',
+        height=350
+    )
+    
+    st.plotly_chart(fig_roc, use_container_width=True)
+
+# Interactive Predictor
+st.markdown("**Interactive Response Predictor**")
+st.markdown("Adjust patient characteristics to predict treatment response probability")
+
+pred_col1, pred_col2, pred_col3, pred_col4 = st.columns(4)
+
+with pred_col1:
+    pred_age = st.slider("Age", 18, 85, 55)
+    pred_gender = st.selectbox("Gender", ['Male', 'Female'])
+
+with pred_col2:
+    pred_ethnicity = st.selectbox("Ethnicity", model_data['ethnicity'].unique().tolist())
+    pred_bmi = st.slider("BMI", 18.0, 45.0, 28.0, 0.5)
+
+with pred_col3:
+    pred_severity = st.selectbox("Baseline Severity", ['Mild', 'Moderate', 'Severe'])
+    pred_treatment = st.selectbox("Treatment Arm", model_data['treatment_arm'].unique().tolist())
+
+with pred_col4:
+    st.markdown("### Prediction")
+    
+    # Encode inputs
+    pred_gender_enc = le_gender.transform([pred_gender])[0]
+    pred_ethnicity_enc = le_ethnicity.transform([pred_ethnicity])[0]
+    pred_severity_enc = le_severity.transform([pred_severity])[0]
+    pred_treatment_enc = le_treatment.transform([pred_treatment])[0]
+    
+    # Make prediction
+    pred_input = np.array([[pred_age, pred_gender_enc, pred_ethnicity_enc, pred_bmi, pred_severity_enc, pred_treatment_enc]])
+    pred_prob = model.predict_proba(pred_input)[0][1]
+    
+    st.metric("Response Probability", f"{pred_prob*100:.1f}%")
+    
+    if pred_prob >= 0.7:
+        st.success("High likelihood of response")
+    elif pred_prob >= 0.4:
+        st.warning("Moderate likelihood of response")
+    else:
+        st.error("Low likelihood of response")
 
 st.markdown("---")
 
